@@ -1,6 +1,5 @@
 extern crate serde_json;
 extern crate serde;
-use std::error::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -12,33 +11,12 @@ pub enum BleMessageType{
     HubAttached=0x04,
 }
 
-pub fn translate_blemessagetype_from_int(input: u32) -> Result<BleMessageType, Box<dyn Error>> {
-    match input {
-        0x01=> Ok(BleMessageType::HubProperties),
-        0x41=> Ok(BleMessageType::PortInputFormatSetup),
-        0x81=> Ok(BleMessageType::PortOutputCommand),
-        0x45=> Ok(BleMessageType::PortValue),
-        0x04=> Ok(BleMessageType::HubAttached),
-        _ => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "UnknownBleMessageType")))
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum Port{
     A=0,
     B=1,
     C=2,
     D=3,
-}
-
-pub fn translate_port_from_int(input: u32) -> Result<Port, Box<dyn Error>> {
-    match input {
-        0=> Ok(Port::A),
-        1=> Ok(Port::B),
-        2=> Ok(Port::C),
-        3=> Ok(Port::D),
-        _ => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "UnknownPort")))
-    }
 }
 
 #[derive(Debug)]

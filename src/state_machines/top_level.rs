@@ -29,7 +29,7 @@ impl StateMachine for TopLevelSm {
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
             TopLevelState::Idle => {
-                println!("Idling");
+
             }
         }
 
