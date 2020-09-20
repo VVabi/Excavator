@@ -1,35 +1,68 @@
 use crate::library::types::*;
 use crate::library::shifter::*;
+use crate::library::actuator::*;
 use crate::protocol;
 use protocol::*;
 use std::collections::HashMap;
 
 pub struct SensorProcessing {
     pub motor_positions: HashMap<u8, i32>,
-    pub shifters: Vec<Shifter>
+    pub motor_feedback: HashMap<u8, u8>,
+    pub shifters: Vec<Shifter>,
+    pub actuators: HashMap<String, Actuator>
 }
 
 impl SensorProcessing {
     pub fn new() -> SensorProcessing {
-           SensorProcessing  { motor_positions: HashMap::new(), shifters: Vec::new()} 
+           SensorProcessing  { motor_positions: HashMap::new(), motor_feedback: HashMap::new(), shifters: Vec::new(), actuators: HashMap::new() } 
     }
 }
 
 impl SensorProcessing {
     pub fn processing(self: &mut Self, messenger: &mut dyn Messenger) -> bool {
         let position_updates = messenger.receive_message(&messages::MotorPositionUpdate::get_topic());
-        let ret = position_updates.len() > 0;
+        let mut ret = position_updates.len() > 0;
 
         for p in position_updates {
             let meas = serde_json::from_str::<MotorPositionUpdate>(&p);
 
             match meas {
                 Ok(v) => {
-                    self.motor_positions.insert(v. port as u8, v.position);
+                    self.motor_positions.insert(v.port as u8, v.position);
                 }
                 Err(e) => log::error!("Error in JSON deserialization: {:?}", e)
             }
         }
+
+        let cmd_updates = messenger.receive_message(&messages::MotorCommandFeedback::get_topic());
+
+        ret = ret || (cmd_updates.len() > 0);
+
+        for p in cmd_updates {
+            let meas = serde_json::from_str::<MotorCommandFeedback>(&p);
+
+            match meas {
+                Ok(v) => {
+                    self.motor_feedback.insert(v.port as u8, v.flags);
+                }
+                Err(e) => log::error!("Error in JSON deserialization: {:?}", e)
+            }
+        }
+
         ret
+    }
+
+    pub fn clear_motor_flags(self: &mut Self, port: u8) {
+        self.motor_feedback.remove_entry(&port);
+    }
+
+    pub fn is_motor_cmd_discarded(self: &mut Self, port: u8) -> bool {
+        let m = self.motor_feedback.get(&port);
+
+        if let Some(x) = m {
+            return (x & 4) != 0
+        }
+
+        false
     }
 }

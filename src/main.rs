@@ -17,76 +17,28 @@ use protocol::messages::*;
 
 fn main() {
     env_logger::init();
-    let subscriptions = vec![MotorPositionUpdate::get_topic()];
+    let subscriptions = vec![MotorPositionUpdate::get_topic(), MotorCommandFeedback::get_topic()];
     let (tx, rx) = launch_mqtt("localhost".to_string(), 1883, subscriptions);
     let mut mqtt_messenger = MqttMessenger::new(&tx, &rx);
 
-    let x = state_machines::top_level::TopLevelSm::new();
+    let x = state_machines::excavator_grip::ExcavatorGrip::new();
 
     let mut manager         = StateMachineManager { sm_stack: Vec::new()};
     let mut sensor_proc      = SensorProcessing::new();
 
-    let mut shifter = library::shifter::Shifter {angle_diffs: vec![0, 180], port: Port::C, start_position: None};
-    shifter.init_calibration(& mut mqtt_messenger, & mut sensor_proc);
+    library::excavator::init_excavator(&mut mqtt_messenger, &mut sensor_proc);
 
-    let two_seconds = std::time::Duration::from_millis(2000);
-    std::thread::sleep(two_seconds);
-    sensor_proc.processing(&mut mqtt_messenger);
-    shifter.finish_calibration(& mut sensor_proc);
+    /*sensor_proc.actuators.get_mut("lower_arm").unwrap().start_extend_actuator(&mut mqtt_messenger, 0.5).unwrap();
+    sensor_proc.actuators.get_mut("higher_arm").unwrap().start_extend_actuator(&mut mqtt_messenger, 0.5).unwrap();
+    sensor_proc.actuators.get_mut("shovel").unwrap().start_extend_actuator(&mut mqtt_messenger, 0.0).unwrap();
 
-    shifter.shift(&mut mqtt_messenger, 1);
-    sensor_proc.shifters.push(shifter);
-    std::thread::sleep(two_seconds);
-
-    let mut lower_act = library::actuator::Actuator {direction_sign: -1, gear_ratio: 1.25, length_in: 12.0, length_out: 17.0, port: Port::A, rotational_range: 9600.0, pulled_out_position: None, target_position: 0};
-
-    lower_act.init_calibration(& mut mqtt_messenger, & mut sensor_proc);
-    let forty_seconds = std::time::Duration::from_millis(40000);
-    std::thread::sleep(forty_seconds);
-    sensor_proc.processing(&mut mqtt_messenger);
-    lower_act.finish_calibration(& mut sensor_proc);
-
-    lower_act.start_extend_actuator(& mut mqtt_messenger, 0.5).unwrap();
-    sensor_proc.processing(&mut mqtt_messenger);
-    while !lower_act.check_extend_actuator_finished(& mut sensor_proc) {
+    while !sensor_proc.actuators.get_mut("shovel").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions) {
         sensor_proc.processing(&mut mqtt_messenger);
-
-        let hundred_millis = std::time::Duration::from_millis(100);
-        std::thread::sleep(hundred_millis);
-    }
-    std::thread::sleep(two_seconds);
-
-    lower_act.start_extend_actuator(& mut mqtt_messenger, 1.0).unwrap();
-    sensor_proc.processing(&mut mqtt_messenger);
-    while !lower_act.check_extend_actuator_finished(& mut sensor_proc) {
-        sensor_proc.processing(&mut mqtt_messenger);
-
-        let hundred_millis = std::time::Duration::from_millis(100);
-        std::thread::sleep(hundred_millis);
+        let ten_millis = std::time::Duration::from_millis(10);
+        std::thread::sleep(ten_millis);
     }
 
-    std::thread::sleep(two_seconds);
-
-    lower_act.start_extend_actuator(& mut mqtt_messenger, 0.0).unwrap();
-    sensor_proc.processing(&mut mqtt_messenger);
-    while !lower_act.check_extend_actuator_finished(& mut sensor_proc) {
-        sensor_proc.processing(&mut mqtt_messenger);
-
-        let hundred_millis = std::time::Duration::from_millis(100);
-        std::thread::sleep(hundred_millis);
-    }
-
-    std::thread::sleep(two_seconds);
-
-    lower_act.start_extend_actuator(& mut mqtt_messenger, 0.3).unwrap();
-    sensor_proc.processing(&mut mqtt_messenger);
-    while !lower_act.check_extend_actuator_finished(& mut sensor_proc) {
-        sensor_proc.processing(&mut mqtt_messenger);
-
-        let hundred_millis = std::time::Duration::from_millis(100);
-        std::thread::sleep(hundred_millis);
-    }
-
+    sensor_proc.actuators.get_mut("shovel").unwrap().start_extend_actuator(&mut mqtt_messenger, 1.0).unwrap();*/
     manager.launch(Box::new(x)).expect("Error during state machine manager launch");
 
     loop {

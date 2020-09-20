@@ -1,14 +1,30 @@
 extern crate serde_json;
 extern crate serde;
+use std::error::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum BleMessageType{
     HubProperties=0x01,
+    PortInformationRequest=0x21,
     PortInputFormatSetup=0x41,
     PortOutputCommand=0x81,
+    PortOutputCommandFeedback=0x82,
     PortValue=0x45,
     HubAttached=0x04,
+}
+
+pub fn translate_blemessagetype_from_int(input: u32) -> Result<BleMessageType, Box<dyn Error>> {
+    match input {
+        0x01=> Ok(BleMessageType::HubProperties),
+        0x21=> Ok(BleMessageType::PortInformationRequest),
+        0x41=> Ok(BleMessageType::PortInputFormatSetup),
+        0x81=> Ok(BleMessageType::PortOutputCommand),
+        0x82=> Ok(BleMessageType::PortOutputCommandFeedback),
+        0x45=> Ok(BleMessageType::PortValue),
+        0x04=> Ok(BleMessageType::HubAttached),
+        _ => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "UnknownBleMessageType")))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -19,17 +35,29 @@ pub enum Port{
     D=3,
 }
 
+pub fn translate_port_from_int(input: u32) -> Result<Port, Box<dyn Error>> {
+    match input {
+        0=> Ok(Port::A),
+        1=> Ok(Port::B),
+        2=> Ok(Port::C),
+        3=> Ok(Port::D),
+        _ => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "UnknownPort")))
+    }
+}
+
 #[derive(Debug)]
 pub enum MessageUniqueId {
     SetMotorPwmUniqueId,
     SetMotorSpeedUniqueId,
     MotorGoToPositionUniqueId,
+    MotorCommandFeedbackUniqueId,
     EnableModeUpdatesUniqueId,
     MotorPositionUpdateUniqueId,
     RequestBatteryStatusUniqueId,
     BatteryStatusUniqueId,
     AttachmentInfoUniqueId,
     AttachedIoUniqueId,
+    PortInformationRequestUniqueId,
 }
 
 pub trait Message {
@@ -130,6 +158,35 @@ impl StaticMessageInfo for MotorGoToPosition {
     }
     fn get_topic() -> std::string::String {
         return "brickcontrol/motor/go_to_position".to_string();
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MotorCommandFeedback {
+    pub port: Port,
+    pub flags: u8
+}
+
+impl Message for MotorCommandFeedback {
+    #[inline]
+    fn get_unique_id_dyn(&self) -> MessageUniqueId {
+        MessageUniqueId::MotorCommandFeedbackUniqueId
+    }
+    fn to_json(&self) -> std::result::Result<std::string::String, serde_json::Error> {
+        serde_json::to_string(&self)
+    }
+    fn get_topic_dyn(&self) -> std::string::String {
+        return "brickcontrol/motor/output/command_feedback".to_string();
+    }
+}
+
+impl StaticMessageInfo for MotorCommandFeedback {
+    #[inline]
+    fn get_unique_id() -> MessageUniqueId {
+        MessageUniqueId::MotorCommandFeedbackUniqueId
+    }
+    fn get_topic() -> std::string::String {
+        return "brickcontrol/motor/output/command_feedback".to_string();
     }
 }
 
@@ -306,6 +363,34 @@ impl StaticMessageInfo for AttachedIo {
     }
     fn get_topic() -> std::string::String {
         return "brickcontrol/io/connection_update".to_string();
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PortInformationRequest {
+    pub port_id: u8
+}
+
+impl Message for PortInformationRequest {
+    #[inline]
+    fn get_unique_id_dyn(&self) -> MessageUniqueId {
+        MessageUniqueId::PortInformationRequestUniqueId
+    }
+    fn to_json(&self) -> std::result::Result<std::string::String, serde_json::Error> {
+        serde_json::to_string(&self)
+    }
+    fn get_topic_dyn(&self) -> std::string::String {
+        return "brickcontrol/generic/read_port".to_string();
+    }
+}
+
+impl StaticMessageInfo for PortInformationRequest {
+    #[inline]
+    fn get_unique_id() -> MessageUniqueId {
+        MessageUniqueId::PortInformationRequestUniqueId
+    }
+    fn get_topic() -> std::string::String {
+        return "brickcontrol/generic/read_port".to_string();
     }
 }
 
