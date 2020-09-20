@@ -67,7 +67,7 @@ impl StateMachine for MoveActuators {
         }
     }
 
-    fn set_child_result(self: &mut Self, _ret: StateMachineRetValue) {
+    fn set_child_result(self: &mut Self, _ret: &StateMachineRetValue) {
 
     }
 }

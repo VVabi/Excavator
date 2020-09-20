@@ -24,11 +24,12 @@ impl Display for ExcavatorGripStates {
 
 pub struct ExcavatorGrip{
     pub state: ExcavatorGripStates,
+    child_done_cb: Option<Box<dyn Fn(& mut ExcavatorGripStates)>>
 }
 
 impl ExcavatorGrip {
     pub fn new() -> ExcavatorGrip {
-        ExcavatorGrip {state : ExcavatorGripStates::OpenShovel}
+        ExcavatorGrip {state : ExcavatorGripStates::OpenShovel, child_done_cb: None}
     }
 }
 
@@ -53,7 +54,7 @@ impl StateMachine for ExcavatorGrip {
                 let mut targets = HashMap::new();
                 targets.insert("shovel".to_string(), 1.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorGripStates::LowerArm;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorGripStates| *x = ExcavatorGripStates::LowerArm));
             }
 
             ExcavatorGripStates::LowerArm => {
@@ -61,21 +62,21 @@ impl StateMachine for ExcavatorGrip {
                 targets.insert("lower_arm".to_string(), 0.0);
                 targets.insert("higher_arm".to_string(), 0.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorGripStates::Grip;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorGripStates| *x = ExcavatorGripStates::Grip));
             }
 
             ExcavatorGripStates::Grip => {
                 let mut targets = HashMap::new();
                 targets.insert("shovel".to_string(), 0.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorGripStates::RaiseArm;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorGripStates| *x = ExcavatorGripStates::RaiseArm));
             }
             ExcavatorGripStates::RaiseArm => {
                 let mut targets = HashMap::new();
                 targets.insert("lower_arm".to_string(), 1.0);
                 targets.insert("higher_arm".to_string(), 1.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorGripStates::Idle;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorGripStates| *x = ExcavatorGripStates::Idle));
             }
         }
 
@@ -84,7 +85,10 @@ impl StateMachine for ExcavatorGrip {
         }
     }
 
-    fn set_child_result(self: &mut Self, _ret: StateMachineRetValue) {
-
+    fn set_child_result(self: &mut Self, _ret: &StateMachineRetValue) {
+        if let Some(x) = &self.child_done_cb {
+            x(& mut self.state);
+            self.child_done_cb = None;
+        }
     }
 }

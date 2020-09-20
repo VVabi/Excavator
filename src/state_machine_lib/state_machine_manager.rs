@@ -50,11 +50,11 @@ impl StateMachineManager {
         let current_sm_res = self.sm_stack.pop();
         match {current_sm_res} {
             Some(mut current_sm) => {
-                let prev_state = current_sm.get_current_state();
-                let ret = current_sm.step(messenger, sensor_proc);
+                let prev_state  = current_sm.get_current_state();
+                let ret         = current_sm.step(messenger, sensor_proc);
                 let after_state = current_sm.get_current_state();
 
-                if after_state != prev_state {
+                if after_state != prev_state { //TODO this can actually be confusing because it is printed BEFORE a child is executed
                     let indent = 4*self.sm_stack.len();
                     log::info!("{:indent$}State transition from {} to {} in {}", "", prev_state.red(), after_state.red(), current_sm.get_name().green(), indent=indent)
                 }
@@ -62,6 +62,19 @@ impl StateMachineManager {
                 if ret.result == StateMachineResult::Done {
                     let indent = 4*self.sm_stack.len();
                     log::info!("{:indent$}State machine {} finished", "", current_sm.get_name().green(), indent=indent);
+                    let parent = self.sm_stack.pop();
+
+                    if let Some(mut p) = parent {
+                        let prev_state  = p.get_current_state();
+                        p.set_child_result(&ret);
+                        let after_state = p.get_current_state();
+                        if after_state != prev_state { //TODO this can actually be confusing because it is printed BEFORE a child is executed
+                            let indent = 4*self.sm_stack.len();
+                            log::info!("{:indent$}State transition from {} to {} in {}", "", prev_state.red(), after_state.red(), p.get_name().green(), indent=indent)
+                        }
+                        self.sm_stack.push(p);
+                    }
+
                     return Result::Ok(ret.result);
                 }
 
@@ -69,7 +82,7 @@ impl StateMachineManager {
 
                 if let Some(x) = ret.child {
                     let indent = 4*self.sm_stack.len();
-                    log::info!("{:indent$}Starting to execute state machine {}", "", x.get_name().green(), indent=indent);
+                    log::info!("{:indent$}Starting to execute state machine {} in state {}", "", x.get_name().green(), x.get_current_state().red(), indent=indent);
                     self.sm_stack.push(x);
                 }
                 return Result::Ok(ret.result);
