@@ -4,10 +4,22 @@ use crate::protocol;
 use crate::sensor_processing::sensor_processing_root::*;
 use state_machine_lib::*;
 use protocol::*;
+use super::excavator_grip::*;
+use super::excavator_release::*;
+use std::fmt::*;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum TopLevelState {
     Idle,
+    Grip,
+    Release
+}
+
+impl Display for TopLevelState {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 pub struct TopLevelSm{
@@ -21,15 +33,29 @@ impl TopLevelSm {
 }
 
 impl StateMachine for TopLevelSm {
-    fn check_abort_children(self: &mut Self, messenger: &mut dyn Messenger) -> bool {
+    fn get_current_state(self: &Self) -> String {
+        return self.state.to_string();
+    }
+    fn get_name(self: &Self) -> String {
+        return "TopLevel".to_string();
+    }
+    fn check_abort_children(self: &mut Self, _messenger: &mut dyn Messenger) -> bool {
          false
     }
-    fn step(self: &mut Self, messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
-        let ret = StateMachineResult::Ongoing;
+    fn step(self: &mut Self, _messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
+        let mut ret = StateMachineResult::Ongoing;
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
             TopLevelState::Idle => {
-
+                child = Some(Box::new(ExcavatorGrip::new()));
+                self.state = TopLevelState::Grip;
+            }
+            TopLevelState::Grip => {
+                child = Some(Box::new(ExcavatorRelease::new()));
+                self.state = TopLevelState::Release;
+            }
+            TopLevelState::Release => {
+               ret = StateMachineResult::Done;
             }
         }
 

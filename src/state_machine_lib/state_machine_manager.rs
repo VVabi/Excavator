@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt;
 use crate::library::types::*;
 use crate::sensor_processing::sensor_processing_root::*;
+use colored::*;
 
 pub struct StateMachineManager {
     pub sm_stack: Vec<Box<dyn StateMachine>>
@@ -24,7 +25,7 @@ impl StateMachineManager {
         if !self.sm_stack.is_empty() {
             return  Result::Err(Box::new(StateMachineError("SM already running!".to_string())));
         }
-
+        log::info!("Starting to execute state machine {:?}", sm.get_name());
         self.sm_stack.push(sm);
         Ok(())
     }
@@ -42,21 +43,33 @@ impl StateMachineManager {
         }
 
         for _x in 0..num_to_kill {
-            self.sm_stack.pop();
+            self.sm_stack.pop(); //TODO add debug code
+            //log::info!("State machine {:?} aborted", y.get_name());
         }
 
         let current_sm_res = self.sm_stack.pop();
         match {current_sm_res} {
             Some(mut current_sm) => {
+                let prev_state = current_sm.get_current_state();
                 let ret = current_sm.step(messenger, sensor_proc);
+                let after_state = current_sm.get_current_state();
+
+                if after_state != prev_state {
+                    let indent = 4*self.sm_stack.len();
+                    log::info!("{:indent$}State transition from {} to {} in {}", "", prev_state.red(), after_state.red(), current_sm.get_name().green(), indent=indent)
+                }
+
                 if ret.result == StateMachineResult::Done {
+                    let indent = 4*self.sm_stack.len();
+                    log::info!("{:indent$}State machine {} finished", "", current_sm.get_name().green(), indent=indent);
                     return Result::Ok(ret.result);
                 }
 
                 self.sm_stack.push(current_sm);
 
                 if let Some(x) = ret.child {
-                    println!("Pushing child!");
+                    let indent = 4*self.sm_stack.len();
+                    log::info!("{:indent$}Starting to execute state machine {}", "", x.get_name().green(), indent=indent);
                     self.sm_stack.push(x);
                 }
                 return Result::Ok(ret.result);

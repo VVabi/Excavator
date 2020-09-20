@@ -3,17 +3,23 @@ use crate::library::types::*;
 use crate::protocol;
 use crate::sensor_processing::sensor_processing_root::*;
 use state_machine_lib::*;
-use protocol::*;
+use std::collections::HashMap;
+use super::move_actuators::*;
+use std::fmt::*;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum ExcavatorReleaseState {
     Idle,
     LowerArm,
-    WaitForLoweredArm,
     OpenShovel,
-    WaitForShovelOpened,
     RaiseArm,
-    WaitForRaisedArm,
+}
+
+impl Display for ExcavatorReleaseState {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 pub struct ExcavatorRelease{
@@ -27,48 +33,46 @@ impl ExcavatorRelease {
 }
 
 impl StateMachine for ExcavatorRelease {
-    fn check_abort_children(self: &mut Self, messenger: &mut dyn Messenger) -> bool {
+    fn get_current_state(self: &Self) -> String {
+        return self.state.to_string();
+    }
+    fn get_name(self: &Self) -> String {
+        return "ExcavatorRelease".to_string();
+    }
+    fn check_abort_children(self: &mut Self, _messenger: &mut dyn Messenger) -> bool {
          false
     }
-    fn step(self: &mut Self, messenger: &mut dyn Messenger, sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
-        let ret = StateMachineResult::Ongoing;
+    fn step(self: &mut Self, _messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
+        let mut ret = StateMachineResult::Ongoing;
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
             ExcavatorReleaseState::Idle => {
-
+                ret = StateMachineResult::Done;
             }
 
             ExcavatorReleaseState::LowerArm => {
-                sensor_proc.actuators.get_mut("lower_arm").unwrap().start_extend_actuator(messenger, 0.0).unwrap();
-                sensor_proc.actuators.get_mut("higher_arm").unwrap().start_extend_actuator(messenger, 0.0).unwrap();
-                self.state = ExcavatorReleaseState::WaitForLoweredArm;
-            }
-            ExcavatorReleaseState::WaitForLoweredArm => {
-                if sensor_proc.actuators.get_mut("higher_arm").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions) &&  sensor_proc.actuators.get_mut("lower_arm").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions){
-                    self.state = ExcavatorReleaseState::OpenShovel;
-                }
+                let mut targets = HashMap::new();
+                targets.insert("lower_arm".to_string(), 0.0);
+                targets.insert("higher_arm".to_string(), 0.0);
+                child = Some(Box::new(MoveActuators::new(targets)));
+                self.state = ExcavatorReleaseState::OpenShovel;
             }
 
             ExcavatorReleaseState::OpenShovel => {
-                sensor_proc.actuators.get_mut("shovel").unwrap().start_extend_actuator(messenger, 1.0).unwrap();
-                self.state = ExcavatorReleaseState::WaitForShovelOpened;
-            }
-            ExcavatorReleaseState::WaitForShovelOpened => {
-                if sensor_proc.actuators.get_mut("shovel").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions) {
-                    self.state = ExcavatorReleaseState::RaiseArm;
-                }
+                let mut targets = HashMap::new();
+                targets.insert("shovel".to_string(), 1.0);
+                child = Some(Box::new(MoveActuators::new(targets)));
+                self.state = ExcavatorReleaseState::RaiseArm;
             }
 
             ExcavatorReleaseState::RaiseArm => {
-                sensor_proc.actuators.get_mut("lower_arm").unwrap().start_extend_actuator(messenger, 1.0).unwrap();
-                sensor_proc.actuators.get_mut("higher_arm").unwrap().start_extend_actuator(messenger, 1.0).unwrap();
-                self.state = ExcavatorReleaseState::WaitForRaisedArm;
+                let mut targets = HashMap::new();
+                targets.insert("lower_arm".to_string(), 1.0);
+                targets.insert("higher_arm".to_string(), 1.0);
+                child = Some(Box::new(MoveActuators::new(targets)));
+                self.state = ExcavatorReleaseState::Idle;
             }
-            ExcavatorReleaseState::WaitForRaisedArm => {
-                if sensor_proc.actuators.get_mut("higher_arm").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions) &&  sensor_proc.actuators.get_mut("lower_arm").unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions){
-                    self.state = ExcavatorReleaseState::Idle;
-                }
-            }
+
         }
 
         return StateMachineRetValue {

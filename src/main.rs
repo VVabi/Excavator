@@ -21,7 +21,7 @@ fn main() {
     let (tx, rx) = launch_mqtt("localhost".to_string(), 1883, subscriptions);
     let mut mqtt_messenger = MqttMessenger::new(&tx, &rx);
 
-    let x = state_machines::excavator_grip::ExcavatorGrip::new();
+    let x = state_machines::top_level::TopLevelSm::new();
 
     let mut manager         = StateMachineManager { sm_stack: Vec::new()};
     let mut sensor_proc      = SensorProcessing::new();

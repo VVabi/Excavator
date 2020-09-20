@@ -19,7 +19,7 @@ pub struct Actuator{
 
 impl Actuator {
     pub fn init_calibration(self: &mut Self, messenger: &mut dyn Messenger, sensor_proc: &mut SensorProcessing) {
-        log::info!("Starting Actuator calibration");
+        log::debug!("Starting Actuator calibration");
         sensor_proc.clear_motor_flags(self.port as u8);
         let enable_position_updates = EnableModeUpdates {mode:2, port: self.port, notifications_enabled: 1, delta: 5 };
         if let Err(e) = messenger.publish_message(&enable_position_updates) {
@@ -54,7 +54,7 @@ impl Actuator {
     pub fn finish_calibration(self: &mut Self, sensor_proc: &mut SensorProcessing) -> bool {
         let key = self.port as u8;
         if !sensor_proc.is_motor_cmd_discarded(key) {
-            log::info!("Actuator calibration not done: cmd not discarded yet");
+            log::debug!("Actuator calibration not done: cmd not discarded yet");
             return false;
         }
 
@@ -72,11 +72,11 @@ impl Actuator {
             let mut y: i32 = *x;
 
             y = y+offset;
-            log::info!("calibrated start position of Actuator: {:?}", y);
+            log::debug!("calibrated start position of Actuator: {:?}", y);
             self.pulled_out_position = Some(y);
             return true
         } else {
-            log::info!("Actuator calibration not done: missing motor position");
+            log::debug!("Actuator calibration not done: missing motor position");
         }
         false
     }
@@ -89,7 +89,7 @@ impl Actuator {
         let rotational_motor_range = 1.0/self.gear_ratio*self.rotational_range;
         let rotational_ratio = rotational_motor_range*(1.0-ratio);
         self.target_position  = ((self.pulled_out_position.unwrap() as f64) - (self.direction_sign as f64)*rotational_ratio) as i32;
-        log::info!("Actuator target position: {}", self.target_position);
+        log::debug!("Actuator target position: {}", self.target_position);
         let goto_position = MotorGoToPosition { port: self.port, max_power: 70, pwm: 100, target_angle: self.target_position};
         if let Err(e) = messenger.publish_message(&goto_position) {
             log::error!("Error on publish: {:?}", e);
