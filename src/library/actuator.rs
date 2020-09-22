@@ -20,29 +20,8 @@ pub struct Actuator{
 impl Actuator {
     pub fn init_calibration(self: &mut Self, messenger: &mut dyn Messenger, sensor_proc: &mut SensorProcessing) {
         log::debug!("Starting Actuator calibration");
-        sensor_proc.clear_motor_flags(self.port as u8);
-        let enable_position_updates = EnableModeUpdates {mode:2, port: self.port, notifications_enabled: 1, delta: 5 };
-        if let Err(e) = messenger.publish_message(&enable_position_updates) {
-            log::error!("Error on publish: {:?}", e);
-        }
-        
-        let read_pos = PortInformationRequest {port_id: self.port as u8};
-        if let Err(e) = messenger.publish_message(&read_pos) {
-            log::error!("Error on publish: {:?}", e);
-        }
         let key = self.port as u8;
- 
-        let start;
-        loop {
-            sensor_proc.processing(messenger);
-            let value = sensor_proc.motor_positions.get(&key);
-
-            if let Some(x) = value {
-                start = *x;
-                break;
-            }
-        }
-
+        let start = sensor_proc.motor_positions.get(&key).unwrap();
         let angle = 2*(self.rotational_range*1.0/self.gear_ratio*(self.direction_sign as f64)) as i32;
 
         let goto_position = MotorGoToPosition { port: self.port, max_power: 20, pwm: 100, target_angle: start+angle};

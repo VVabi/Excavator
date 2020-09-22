@@ -24,11 +24,12 @@ impl Display for ExcavatorReleaseState {
 
 pub struct ExcavatorRelease{
     pub state: ExcavatorReleaseState,
+    child_done_cb: Option<Box<dyn Fn(& mut ExcavatorReleaseState)>>
 }
 
 impl ExcavatorRelease {
     pub fn new() -> ExcavatorRelease {
-        ExcavatorRelease {state : ExcavatorReleaseState::LowerArm }
+        ExcavatorRelease {state : ExcavatorReleaseState::LowerArm, child_done_cb: None}
     }
 }
 
@@ -55,14 +56,14 @@ impl StateMachine for ExcavatorRelease {
                 targets.insert("lower_arm".to_string(), 0.0);
                 targets.insert("higher_arm".to_string(), 0.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorReleaseState::OpenShovel;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorReleaseState| *x = ExcavatorReleaseState::OpenShovel));
             }
 
             ExcavatorReleaseState::OpenShovel => {
                 let mut targets = HashMap::new();
                 targets.insert("shovel".to_string(), 1.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorReleaseState::RaiseArm;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorReleaseState| *x = ExcavatorReleaseState::RaiseArm));
             }
 
             ExcavatorReleaseState::RaiseArm => {
@@ -70,7 +71,7 @@ impl StateMachine for ExcavatorRelease {
                 targets.insert("lower_arm".to_string(), 1.0);
                 targets.insert("higher_arm".to_string(), 1.0);
                 child = Some(Box::new(MoveActuators::new(targets)));
-                self.state = ExcavatorReleaseState::Idle;
+                self.child_done_cb = Some(Box::new(|x: &mut ExcavatorReleaseState| *x = ExcavatorReleaseState::Idle));
             }
 
         }
@@ -81,6 +82,9 @@ impl StateMachine for ExcavatorRelease {
     }
 
     fn set_child_result(self: &mut Self, _ret: &StateMachineRetValue) {
-
+        if let Some(x) = &self.child_done_cb {
+            x(& mut self.state);
+            self.child_done_cb = None;
+        }
     }
 }

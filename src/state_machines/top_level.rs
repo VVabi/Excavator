@@ -47,8 +47,8 @@ impl StateMachine for TopLevelSm {
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
             TopLevelState::Idle => {
-                child = Some(Box::new(ExcavatorGrip::new()));
-                self.state = TopLevelState::Grip;
+                //child = Some(Box::new(ExcavatorGrip::new()));
+                //self.state = TopLevelState::Grip;
             }
             TopLevelState::Grip => {
                 child = Some(Box::new(ExcavatorRelease::new()));

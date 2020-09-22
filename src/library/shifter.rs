@@ -14,11 +14,6 @@ pub struct Shifter{
 impl Shifter {
     pub fn init_calibration(self: &mut Self, messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) {
         log::debug!("Starting Shift calibration");
-        let enable_position_updates = EnableModeUpdates {mode:2, port: self.port, notifications_enabled: 1, delta: 5 };
-        if let Err(e) = messenger.publish_message(&enable_position_updates) {
-            log::error!("Error on publish: {:?}", e);
-        }
-        
         let mut sign = -1;
 
         if self.angle_diffs.len() > 1 {
