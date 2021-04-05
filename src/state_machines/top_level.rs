@@ -6,14 +6,18 @@ use state_machine_lib::*;
 use protocol::*;
 use super::excavator_grip::*;
 use super::excavator_release::*;
+use super::movesm::*;
+use super::place_excavator::*;
 use std::fmt::*;
 use std::fmt;
+use std::{thread, time};
 
 #[derive(Debug)]
 pub enum TopLevelState {
     Idle,
     Grip,
-    Release
+    Release,
+    Done
 }
 
 impl Display for TopLevelState {
@@ -47,15 +51,21 @@ impl StateMachine for TopLevelSm {
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
             TopLevelState::Idle => {
-                //child = Some(Box::new(ExcavatorGrip::new()));
-                //self.state = TopLevelState::Grip;
+                child = Some(Box::new(ExcavatorPlacementSM::new()));
+                self.state = TopLevelState::Grip;
+                let one_second = time::Duration::from_millis(1000); //HACK
+                thread::sleep(one_second);
             }
             TopLevelState::Grip => {
-                child = Some(Box::new(ExcavatorRelease::new()));
+                child = Some(Box::new(ExcavatorGrip::new()));
                 self.state = TopLevelState::Release;
             }
             TopLevelState::Release => {
-               ret = StateMachineResult::Done;
+               child = Some(Box::new(ExcavatorRelease::new()));
+               self.state = TopLevelState::Done;
+            }
+            TopLevelState::Done => {
+                ret = StateMachineResult::Done;
             }
         }
 

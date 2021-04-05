@@ -11,15 +11,16 @@ pub struct DriveMotor {
     wheel_radius: f64, //cm
     invert_direction: bool,
     target: i32,
-    last_direction: i32
+    last_direction: i32,
+    backlash: f64
 }
 
 impl DriveMotor {
-    pub fn new(gear_ratio: f64, wheel_radius: f64, invert_direction: bool, port: Port) -> DriveMotor {
-        DriveMotor {gear_ratio: gear_ratio, wheel_radius: wheel_radius, invert_direction: invert_direction, port: port, target: 0, last_direction: 1}
+    pub fn new(gear_ratio: f64, wheel_radius: f64, invert_direction: bool, port: Port, backlash: f64) -> DriveMotor {
+        DriveMotor {gear_ratio: gear_ratio, wheel_radius: wheel_radius, invert_direction: invert_direction, port: port, target: 0, last_direction: 1, backlash: backlash}
     }
 
-    pub fn check_change_direction(self: &mut Self, distance: f64) -> bool {
+    pub fn check_change_direction(self: &Self, distance: f64) -> bool {
         let mut larger_zero = distance > 0.0;
         if self.invert_direction {
             larger_zero = !larger_zero;
@@ -33,7 +34,7 @@ impl DriveMotor {
     }
 
 
-    pub fn start_moving(self: &mut Self, distance: f64, messenger: &mut dyn Messenger, sensor_proc: &mut SensorProcessing) {
+    pub fn start_moving(self: &mut Self, distance: f64, pwm: i8, messenger: &mut dyn Messenger, motor_positions: &HashMap<u8, i32>) {
         let circumference = self.wheel_radius*2.0*std::f64::consts::PI;
         let rotations = distance/circumference*1.0/self.gear_ratio;
         let mut degrees = rotations*360.0;
@@ -43,7 +44,7 @@ impl DriveMotor {
         }
 
         let key         = self.port as u8;
-        let start       = sensor_proc.motor_positions.get(&key).unwrap();
+        let start       = motor_positions.get(&key).unwrap();
         let target      = start+degrees as i32;
 
         let goto_position = MotorGoToPosition { port: self.port, max_power: 100, pwm: 50, target_angle: target};
@@ -56,12 +57,29 @@ impl DriveMotor {
         } else {
             self.last_direction = 1;
         }
-        log::info!("target {} current {}", target, start);
     }
 
     pub fn check_finished_driving(self: &Self, motor_positions: &HashMap<u8, i32>) -> bool {
         let key     = self.port as u8;
         let value   = motor_positions[&key];
         return (value-self.target).abs() < 30 || (self.last_direction == 1 && value > self.target) || (self.last_direction == -1 && value < self.target) //TODO remember the direction we came from
+    }
+
+    pub fn undo_backlash(self: &mut Self, distance: f64, messenger: &mut dyn Messenger, motor_positions: &HashMap<u8, i32>) -> bool {
+        if !self.check_change_direction(distance) {
+            return false;
+        }
+
+        let mut dist = self.backlash;
+
+        if self.last_direction > 0 {
+            dist = -dist;
+        }
+
+        if self.invert_direction {
+            dist = -dist;
+        }
+        self.start_moving(dist, 20, messenger, motor_positions);
+        true
     }
 }

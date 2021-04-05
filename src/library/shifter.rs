@@ -8,10 +8,15 @@ use protocol::*;
 pub struct Shifter{
     pub angle_diffs : Vec<i32>,
     pub start_position: Option<i32>,
-    pub port: Port
+    pub port: Port,
+    pub gear: usize
 }
 
 impl Shifter {
+    pub fn new(angle_diffs: Vec<i32>, port: Port) -> Shifter {
+        Shifter{angle_diffs: angle_diffs, start_position: None, port: port, gear: std::usize::MAX}
+    }
+
     pub fn init_calibration(self: &mut Self, messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) {
         log::debug!("Starting Shift calibration");
         let mut sign = -1;
@@ -38,6 +43,9 @@ impl Shifter {
     }
 
     pub fn shift(self: &mut Self, messenger: &mut dyn Messenger, gear: usize) {
+        if gear == self.gear {
+            return
+        }
         let angle = self.angle_diffs.get(gear);
 
         match angle {
@@ -46,6 +54,7 @@ impl Shifter {
                 if let Err(e) = messenger.publish_message(&goto_position) {
                     log::error!("Error on publish: {:?}", e);
                 }
+                self.gear = gear
             }
             None   => log::error!("Trying to shift to non-existant gear")
         }

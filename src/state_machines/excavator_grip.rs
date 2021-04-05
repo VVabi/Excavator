@@ -43,7 +43,7 @@ impl StateMachine for ExcavatorGrip {
     fn check_abort_children(self: &mut Self, _messenger: &mut dyn Messenger) -> bool {
          false
     }
-    fn step(self: &mut Self, _messenger: &mut dyn Messenger, _sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
+    fn step(self: &mut Self, messenger: &mut dyn Messenger, sensor_proc: &mut SensorProcessing) -> StateMachineRetValue {
         let mut ret = StateMachineResult::Ongoing;
         let mut child: Option<Box<dyn StateMachine>> = None;
         match {&self.state} {
@@ -51,6 +51,7 @@ impl StateMachine for ExcavatorGrip {
                 ret = StateMachineResult::Done;
             }
             ExcavatorGripStates::OpenShovel => {
+                sensor_proc.shifters[0].shift(messenger, 1);
                 let mut targets = HashMap::new();
                 targets.insert("shovel".to_string(), 1.0);
                 child = Some(Box::new(MoveActuators::new(targets)));

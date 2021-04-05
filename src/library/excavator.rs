@@ -1,6 +1,7 @@
 use crate::library::types::*;
 use crate::library::shifter::*;
 use crate::library::actuator::*;
+use crate::library::drive_motor::*;
 use crate::protocol;
 use crate::sensor_processing::sensor_processing_root::*;
 use protocol::*;
@@ -35,8 +36,13 @@ pub fn init_excavator(messenger: &mut dyn Messenger, sensor_proc: &mut SensorPro
     init_motor(messenger, sensor_proc, Port::B);
     init_motor(messenger, sensor_proc, Port::C);
     init_motor(messenger, sensor_proc, Port::D);
-    /*let two_seconds = std::time::Duration::from_millis(2000);
-    let mut shifter = Shifter {angle_diffs: vec![0, 180], port: Port::C, start_position: None};
+
+    let motor_left  = DriveMotor::new(12.0/20.0, 2.0, true, Port::A, 2.0);
+    let motor_right = DriveMotor::new(12.0/20.0, 2.0, true, Port::B, 6.5);
+    sensor_proc.drive_motors.insert("right".to_string(), motor_right);
+    sensor_proc.drive_motors.insert("left".to_string(), motor_left);
+    let two_seconds = std::time::Duration::from_millis(2000);
+    let mut shifter = Shifter::new(vec![0, 180], Port::C);
     shifter.init_calibration(messenger, sensor_proc);
 
     std::thread::sleep(two_seconds);
@@ -89,5 +95,5 @@ pub fn init_excavator(messenger: &mut dyn Messenger, sensor_proc: &mut SensorPro
     sensor_proc.actuators.insert("higher_arm".to_string(), higher_act);
     sensor_proc.actuators.insert("shovel".to_string(), shovel_act);
 
-    sensor_proc.shifters.get_mut(0).unwrap().shift(messenger, 0);*/
+    sensor_proc.shifters.get_mut(0).unwrap().shift(messenger, 1);
 }
