@@ -65,7 +65,7 @@ impl StateMachine for TopLevelSm {
                self.state = TopLevelState::Done;
             }
             TopLevelState::Done => {
-                ret = StateMachineResult::Done;
+                self.state = TopLevelState::Idle;
             }
         }
 

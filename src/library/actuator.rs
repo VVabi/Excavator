@@ -60,7 +60,7 @@ impl Actuator {
         false
     }
 
-    pub fn start_extend_actuator(self: &mut Self, messenger: &mut dyn Messenger, ratio: f64) -> Result<(), Box<dyn Error>> {
+    pub fn start_extend_actuator(self: &mut Self, messenger: &mut dyn Messenger, motor_feedback: & mut HashMap<u8, u8>, ratio: f64) -> Result<(), Box<dyn Error>> {
         if ratio < 0.0 || ratio > 1.0 {
             return Ok(()) //TODO!! return error
         }
@@ -69,6 +69,7 @@ impl Actuator {
         let rotational_ratio = rotational_motor_range*(1.0-ratio);
         self.target_position  = ((self.pulled_out_position.unwrap() as f64) - (self.direction_sign as f64)*rotational_ratio) as i32;
         log::debug!("Actuator target position: {}", self.target_position);
+        motor_feedback.remove_entry(&(self.port as u8));
         let goto_position = MotorGoToPosition { port: self.port, max_power: 70, pwm: 100, target_angle: self.target_position};
         if let Err(e) = messenger.publish_message(&goto_position) {
             log::error!("Error on publish: {:?}", e);
@@ -77,11 +78,18 @@ impl Actuator {
         Ok(())
     }
 
-    pub fn check_extend_actuator_finished(self: &mut Self, motor_positions: &HashMap<u8, i32>) -> bool {
+    pub fn check_extend_actuator_finished(self: &mut Self, motor_positions: &HashMap<u8, i32>, motor_feedback: & HashMap<u8, u8>) -> bool {
         //TODO add a timeout
         let key = self.port as u8;
         let value = motor_positions[&key];
-        return (value-self.target_position).abs() < 100;
+
+        let m = motor_feedback.get(&(self.port as u8));
+        let mut motor_cmd_discarded = false;
+        if let Some(x) = m {
+            motor_cmd_discarded = (x & 4) != 0
+        }
+
+        return ((value-self.target_position).abs() < 100) || motor_cmd_discarded;
     }
 
 }

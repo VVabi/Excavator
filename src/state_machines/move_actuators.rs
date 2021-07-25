@@ -45,14 +45,15 @@ impl StateMachine for MoveActuators {
         match {&self.state} {
             MoveActuatorsState::Init => {
                 for (key, value) in &self.targets {
-                    sensor_proc.actuators.get_mut(key).unwrap().start_extend_actuator(messenger, *value).unwrap();
+                    let actuator = sensor_proc.actuators.get_mut(key).unwrap();
+                    actuator.start_extend_actuator(messenger, & mut sensor_proc.motor_feedback, *value).unwrap();
                 }
                 self.state = MoveActuatorsState::WaitForDone;
             }
             MoveActuatorsState::WaitForDone => {
                 let mut done = true;
                 for (key, _value) in &self.targets {
-                    done = done && sensor_proc.actuators.get_mut(key).unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions);
+                    done = done && sensor_proc.actuators.get_mut(key).unwrap().check_extend_actuator_finished(&sensor_proc.motor_positions, &sensor_proc.motor_feedback);
                 }
 
                 if done {

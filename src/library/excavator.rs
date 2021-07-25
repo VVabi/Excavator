@@ -59,7 +59,7 @@ pub fn init_excavator(messenger: &mut dyn Messenger, sensor_proc: &mut SensorPro
     let mut higher_act = Actuator {direction_sign: -1, gear_ratio: 1.25, length_in: 12.0, length_out: 17.0, port: Port::A, rotational_range: 9400.0, pulled_out_position: None, target_position: 0};
     higher_act.init_calibration(messenger, sensor_proc);
 
-    let mut shovel_act = Actuator {direction_sign: -1, gear_ratio: 1.25, length_in: 5.0, length_out: 8.0, port: Port::B, rotational_range: 6800.0, pulled_out_position: None, target_position: 0};
+    let mut shovel_act = Actuator {direction_sign: -1, gear_ratio: 1.25, length_in: 5.0, length_out: 8.0, port: Port::B, rotational_range: 6200.0, pulled_out_position: None, target_position: 0};
     shovel_act.init_calibration(messenger, sensor_proc);
 
     while !lower_act.finish_calibration(sensor_proc)  {

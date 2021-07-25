@@ -30,7 +30,7 @@ params.maxThreshold = 200
 
 # Filter by Area.
 params.filterByArea = True
-params.minArea = 1000
+params.minArea = 200
 params.maxArea = 200000
 # Filter by Circularity
 #params.filterByCircularity = True
@@ -47,8 +47,12 @@ params.filterByConvexity = False
 params.filterByColor = True # Toggle only this line
 params.blobColor = 255
 
-orangeLower = (0,30,70)  #100,130,50 #BGR not RGB!
-orangeHigher = (50,110,255) #200,200,130
+#orangeLower = (0,30,70)  #100,130,50 #BGR not RGB!
+#orangeHigher = (70,110,255) #200,200,130
+
+orangeLower = (30,50, 10)  #100,130,50 #BGR not RGB!
+orangeHigher = (90,255, 255) #200,200,130
+
 
 # Create a detector with the parameters
 ver = (cv2.__version__).split('.')
@@ -59,7 +63,7 @@ else :
 cnt = 0
 while True:
     ret, frame = cam.read()
-    
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     if not ret:
         print("failed to grab frame")
         break
@@ -67,11 +71,11 @@ while True:
     cnt = cnt+1
     
     if cnt > 10:
-        mask = cv2.inRange(frame, orangeLower, orangeHigher)
+        mask = cv2.inRange(hsv, orangeLower, orangeHigher)
         
         mask = cv2.erode(mask, None, iterations=0)
         mask = cv2.dilate(mask, None, iterations=0)
-        masked_frame = cv2.bitwise_and(frame,frame,mask = mask)
+        masked_frame = cv2.bitwise_and(hsv,hsv,mask = mask)
         
         detector.empty() 
         cv2.imshow("test3", mask)

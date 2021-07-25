@@ -81,7 +81,7 @@ impl SensorProcessing {
         self.motor_feedback.remove_entry(&port);
     }
 
-    pub fn is_motor_cmd_discarded(self: &mut Self, port: u8) -> bool {
+    pub fn is_motor_cmd_discarded(self: &Self, port: u8) -> bool {
         let m = self.motor_feedback.get(&port);
 
         if let Some(x) = m {
